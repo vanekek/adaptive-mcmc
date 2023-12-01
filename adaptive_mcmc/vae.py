@@ -5,13 +5,12 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torchvision
-from metlibvi.vi import NormFlow
 
-from models.aux import ULA_nn_sm
-from models.decoders import get_decoder
-from models.encoders import get_encoder, backward_kernel_mnist
+from aux import ULA_nn_sm
+from decoders import get_decoder
+from encoders import get_encoder, backward_kernel_mnist
 # from models.normflows import NormFlow
-from models.samplers import HMC, ULA
+from samplers import HMC, ULA
 
 def binary_crossentropy_logits_stable(x, y):
     """
@@ -73,6 +72,7 @@ class Base(pl.LightningModule):
 
         self.sigma = sigma  ## Noise for gaussian likelihood
         self.specific_likelihood = specific_likelihood
+        self.validation_step_outputs = []
 
     def encode(self, x):
         # We treat the first half of output as mu, and the rest as logvar
@@ -149,7 +149,8 @@ class Base(pl.LightningModule):
 
         return likelihood
 
-    def validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self):
+        outputs = torch.stack(self.validation_step_outputs)
         # Tensorboard logging
         if "val_loss" in outputs[0].keys():  # if we have single loss
             val_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
@@ -209,6 +210,7 @@ class Base(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         output = self.step(batch)
+        self.validation_step_outputs.append(output)
         d = {"val_loss": output[0]}
         # TODO: Bypass self.current_epoch here or 'dataset'
         if self.current_epoch % 10 == 9:

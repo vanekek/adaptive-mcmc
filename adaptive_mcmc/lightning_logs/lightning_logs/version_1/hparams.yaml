@@ -1,0 +1,23 @@
+K: 5
+acceptance_rate_target: 0.9
+act_func: !!python/name:torch.nn.modules.activation.LeakyReLU ''
+annealing_scheme: all_learnable
+dataset: toy
+grad_clip_val: 0.0
+grad_skip_val: 0.0
+hidden_dim: 2
+learnable_transitions: false
+name: VAE
+net_type: conv
+num_samples: 1
+return_pre_alphas: true
+shape: 28
+sigma: 1.0
+specific_likelihood: null
+step_size: 0.01
+ula_skip_threshold: 0.1
+use_cloned_decoder: false
+use_reverse_kernel: false
+use_score_matching: false
+use_transforms: false
+variance_sensitive_step: true
