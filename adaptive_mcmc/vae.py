@@ -210,8 +210,8 @@ class Base(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         output = self.step(batch)
-        self.validation_step_outputs.append(output)
         d = {"val_loss": output[0]}
+        self.validation_step_outputs.append(d)
         # TODO: Bypass self.current_epoch here or 'dataset'
         if self.current_epoch % 10 == 9:
             nll = self.evaluate_nll(batch=batch,
