@@ -1,6 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-lightning_logs/
+adaptive_mcmc/lightning_logs
 *.py[cod]
 *$py.class
 
