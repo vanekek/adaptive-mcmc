@@ -150,7 +150,7 @@ class Base(pl.LightningModule):
         return likelihood
 
     def on_validation_epoch_end(self):
-        outputs = torch.stack(self.validation_step_outputs)
+        outputs = self.validation_step_outputs
         # Tensorboard logging
         if "val_loss" in outputs[0].keys():  # if we have single loss
             val_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
@@ -200,6 +200,9 @@ class Base(pl.LightningModule):
             self.logger.experiment.add_image(f'{self.dataset}/{self.name}/image', grid, self.current_epoch)
         else:
             pass
+
+        self.validation_step_outputs = []
+        
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -419,6 +422,7 @@ class BaseMCMC(Base):
     def validation_step(self, batch, batch_idx):
         output = self.step(batch)
         d = {"val_loss": output[0], "acceptance_rate": output[1].mean(1)}
+        self.validation_step_outputs.append(d)
         if self.current_epoch % 10 == 9:
             nll = self.evaluate_nll(batch=batch,
                                     beta=torch.linspace(0., 1., 5, device=batch[0].device, dtype=torch.float32))
@@ -553,6 +557,7 @@ class LMCVAE(BaseMCMC):
     def validation_step(self, batch, batch_idx):
         output = self.step(batch)
         d = {"val_loss": output[0], "acceptance_rate": output[1].mean(1), "val_loss_score_match": output[2]}
+        self.validation_step_outputs.append(d)
         if self.current_epoch % 10 == 9:
             nll = self.evaluate_nll(batch=batch,
                                     beta=torch.linspace(0., 1., 5, device=batch[0].device, dtype=torch.float32))
