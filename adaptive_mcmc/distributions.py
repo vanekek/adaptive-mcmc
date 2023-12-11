@@ -257,5 +257,3 @@ class Banana(Distribution):
                 - (z[..., dim1] - 1) ** 2
             )
         return ll  # .sum(-1)
-
-
