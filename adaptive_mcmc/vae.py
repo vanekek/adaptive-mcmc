@@ -609,3 +609,11 @@ class IWAE(Base):
         loss = torch.mean(torch.sum(weight * (-log_Pr - likelihood + log_Q), 0)) + np.log(1. * self.num_samples)
 
         return loss
+
+    def step(self, batch):
+        x, _ = batch
+        z, mu, logvar = self.enc_rep(x, self.num_samples)
+        x_hat = self(z)
+        x = repeat_data(x, self.num_samples)
+        loss = self.loss_function(x_hat, x, mu, logvar, z)
+        return loss, x_hat, z
