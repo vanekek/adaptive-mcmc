@@ -1,5 +1,3 @@
-from argparse import ArgumentParser
-
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 
