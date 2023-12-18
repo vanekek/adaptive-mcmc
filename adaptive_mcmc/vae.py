@@ -563,3 +563,57 @@ class LMCVAE(BaseMCMC):
                                     beta=torch.linspace(0., 1., 5, device=batch[0].device, dtype=torch.float32))
             d.update({"nll": nll})
         return d
+    
+
+class VAE(Base):
+    def loss_function(self, recon_x, x, mu, logvar):
+        batch_size = mu.shape[0] // self.num_samples
+
+        # BCE = binary_crossentropy_logits_stable(recon_x.view(mu.shape[0], -1), x.view(mu.shape[0], -1)).view(
+        #     (self.num_samples, batch_size, -1)).mean(0).sum(-1).mean()
+        likelihood = self.get_likelihood(recon_x, x)
+        likelihood = likelihood.view(self.num_samples, batch_size).mean(0).mean()
+        KLD = -0.5 * torch.mean((1 + logvar - mu.pow(2) - logvar.exp()).view(
+            (self.num_samples, -1, self.hidden_dim)).mean(0).sum(-1))
+        loss = -likelihood + KLD
+        return loss
+
+    def step(self, batch):
+        x, _ = batch
+        z, mu, logvar = self.enc_rep(x, self.num_samples)
+        x_hat = self(z)
+        x = repeat_data(x, self.num_samples)
+        loss = self.loss_function(x_hat, x, mu, logvar)
+        return loss, x_hat, z
+    
+
+class IWAE(Base):
+    def loss_function(self, recon_x, x, mu, logvar, z):
+        batch_size = mu.shape[0] // self.num_samples
+        log_Q = torch.distributions.Normal(loc=mu, scale=torch.exp(0.5 * logvar)).log_prob(z).view(
+            (self.num_samples, -1, self.hidden_dim)).sum(-1)
+
+        log_Pr = torch.distributions.Normal(loc=torch.tensor(0., device=x.device, dtype=torch.float32),
+                                            scale=torch.tensor(1., device=x.device, dtype=torch.float32)).log_prob(
+            z).view((self.num_samples, -1, self.hidden_dim)).sum(-1)
+
+        # BCE = binary_crossentropy_logits_stable(recon_x.view(mu.shape[0], -1), x.view(mu.shape[0], -1)).view(
+        #     (self.num_samples, batch_size, -1)).sum(-1)
+        likelihood = self.get_likelihood(recon_x, x)
+        likelihood = likelihood.view(self.num_samples, batch_size)
+        log_weight = log_Pr + likelihood - log_Q
+        log_weight = log_weight - torch.max(log_weight, 0)[0]  # for stability
+        weight = torch.exp(log_weight)
+        weight = weight / torch.sum(weight, 0)
+        weight = weight.detach()
+        loss = torch.mean(torch.sum(weight * (-log_Pr - likelihood + log_Q), 0)) + np.log(1. * self.num_samples)
+
+        return loss
+
+    def step(self, batch):
+        x, _ = batch
+        z, mu, logvar = self.enc_rep(x, self.num_samples)
+        x_hat = self(z)
+        x = repeat_data(x, self.num_samples)
+        loss = self.loss_function(x_hat, x, mu, logvar, z)
+        return loss, x_hat, z
